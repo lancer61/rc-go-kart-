@@ -1,0 +1,94 @@
+const int rc_pin = 7;         //Connect to RC channel 1 (or whatever channel you want from your RC reciever)
+const int  rc_pin2 = 6;       // connected for turning the power steering motor on alieron stick
+const int Extend_pin = 10;    //Connect to L298N Pin In1 or BTS7960 RPWM NOTE: You may have to switch pins 9 and 10 depending on your RC controller
+const int Retract_pin = 9;    //Connect to L298N Pin In2 or BTS7960 LPWM
+const int Turn_right = 2;    //
+const int Turn_left = 3;    //
+
+
+const int enA = 4;     // controlls motor speed 
+
+
+const int Position_pin = A0;  //This pin will measure the position of the linear actuator
+int RC_duration;              //For measuring the pulse width duration from the RC controller on pin 7
+int RC_location;              //Used to keep track of the "desired" actuator position as commanded by the RC controller
+int RC_duration2;              //For measuring the pulse width duration from the RC controller on pin 6
+int RC_location2;              //Used to keep track of the "desired" actuator position as commanded by the RC controller
+int actual_location;          //Used to keep track of the "actual" actuator position
+int deadband = 20;            //Used to prevent the actuator from constantly seeking (jittering) decrease number for greater accuracy, increase to reduce the jitter
+
+int RC_Speed; 
+
+void setup() {
+  pinMode(rc_pin, INPUT);             //Set the pin connected to the RC reciever as an INPUT
+  pinMode(Extend_pin, OUTPUT);        //Digital pin for extending the actuator
+  pinMode(Retract_pin, OUTPUT);       //Digital pin for retracting the actuator
+  digitalWrite(Extend_pin, LOW);      //Start with the actuator turned off until the loop below
+  digitalWrite(Retract_pin, LOW);
+
+// rc steering 
+pinMode(rc_pin2, INPUT);             //Set the pin connected to the RC reciever as an INPUT
+  pinMode(Turn_right, OUTPUT);        //Digital pin for making the motor turn right 
+  pinMode(Turn_left, OUTPUT);  
+  pinMode(enA, OUTPUT); 
+  //digitalWrite(Turn_right, HIGH);      //do not steer anywhere when plugged in 
+  //digitalWrite(Turn_left, LOW);
+
+
+  
+  Serial.begin(9600);                 //Initialize serial communication at 9600 baud rate
+}
+
+void loop() {
+  RC_duration = constrain(pulseIn(rc_pin, HIGH), 1000, 2000); //measure the pulse width of the RC reciever and clean up any stray values outside expected bounds
+  RC_location = map(RC_duration, 1000, 2000, 29.5, 922);   //interpolate the RC pulse width to command a linear position for the actuator
+
+  RC_duration2 = constrain(pulseIn(rc_pin2, HIGH), 1000, 2000);
+  RC_location2 = map(RC_duration2, 1000, 2000, 29.5, 922);
+
+  RC_Speed = map(RC_duration2, 1000, 2000, 0, 255);
+  analogWrite(enA, RC_Speed);
+
+  actual_location = analogRead(Position_pin);
+
+  if ((actual_location <= RC_location + deadband) && (actual_location >= RC_location - deadband)) {
+    digitalWrite(Extend_pin, LOW);
+    digitalWrite(Retract_pin, LOW);
+  }
+
+  if (actual_location > RC_location + deadband) {
+    digitalWrite(Extend_pin, LOW);
+    digitalWrite(Retract_pin, HIGH);
+  }
+
+  if (actual_location < RC_location - deadband) {
+    digitalWrite(Extend_pin, HIGH);
+    digitalWrite(Retract_pin, LOW);
+  }
+
+  if (RC_Speed > 150) {
+    analogWrite(enA, RC_Speed); // Send PWM signal to L298N Enable pin
+    digitalWrite(Turn_right, HIGH);
+    digitalWrite(Turn_left, LOW);
+  }
+
+  if (RC_Speed < 100) {
+    analogWrite(enA, RC_Speed); // Send PWM signal to L298N Enable pin
+    digitalWrite(Turn_right, LOW);
+    digitalWrite(Turn_left, HIGH);
+  }
+
+  Serial.print("location: ");
+  Serial.println(RC_location);
+  Serial.print("duration: ");
+  Serial.println(RC_duration);
+  Serial.print("Actual location: ");
+  Serial.println(actual_location);
+  Serial.print("RC Speed: ");
+  Serial.println(RC_Speed);
+
+
+
+  delay(200);                                                //small delay helps reduce jitter
+  
+}
