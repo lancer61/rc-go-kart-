@@ -1,0 +1,50 @@
+#define enA 9
+#define in1 6
+#define in2 7
+#define button 4
+
+const int  rc_pin2 = 10;  
+
+int rotDirection = 0;
+int pressed = false;
+int RC_duration2;
+int RC_Speed; 
+
+void setup() {
+  pinMode(enA, OUTPUT);
+  pinMode(in1, OUTPUT);
+  pinMode(in2, OUTPUT);
+  pinMode(button, INPUT);
+  // Set initial rotation direction
+  //digitalWrite(in1, LOW);
+  //digitalWrite(in2, HIGH);
+  Serial.begin(9600);   
+}
+
+void loop() {
+  int potValue = analogRead(A0);
+  int pwmOutput = map(potValue, 0, 1023, 0, 255);
+
+  RC_duration2 = pulseIn(rc_pin2, HIGH);
+  RC_Speed = map(RC_duration2, 1000, 2000, 0, 255);
+  analogWrite(enA, RC_Speed);
+
+  Serial.print("RC_Speed: ");
+  Serial.print(RC_Speed);
+  Serial.print(", In1: ");
+  Serial.print(digitalRead(in1));
+  Serial.print(", In2: ");
+  Serial.println(digitalRead(in2));
+
+  // Direction control based on RC_Speed
+  if (RC_Speed > 200) {
+    digitalWrite(in1, HIGH);
+    digitalWrite(in2, LOW);
+  } else if (RC_Speed < 100) {
+    digitalWrite(in1, LOW);
+    digitalWrite(in2, HIGH);
+  } else if (RC_Speed <= 200   && RC_Speed >= 100) {
+    digitalWrite(in1, LOW);
+    digitalWrite(in2, LOW);  // This should stop the motor
+  }
+}
